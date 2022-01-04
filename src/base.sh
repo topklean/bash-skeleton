@@ -8,6 +8,12 @@
 # gestion interactif ou non => ok
 # logger simple (5 niveau)  => ok
 #
+# mode source
+#   si interactif
+#     couleur
+#     PS4 personnalisé
+#     par défaut je ne touche pas au mode trace
+#     j'active le mode trace si option de ligne de commande ou variable bashDEBUG=TRUE
 # reste à faire
 # gestion des options ligne de commandes
 #   activation du mode trace ?
@@ -23,7 +29,6 @@
 #     PS4 soit actif
 #
 # TESTS UNITAIRES
-
 set -o nounset
 
 # some needs
@@ -31,7 +36,9 @@ TRUE=1
 FALSE=""
 bashDEBUG=$TRUE
 bashVERBOSE=$FALSE
+PS4org=$TRUE
 
+# initTerminal
 # first check if 1 is on terminal and if support colors
 iniTerminal () {
   [[ -t 1 && ($(tput colors) -ge 8) ]] && {
@@ -74,37 +81,42 @@ iniTerminal () {
     IN_TERMINAL=$FALSE
   }
 }
-
-# debugInit
-debugInit () {
+# ps4Init
+ps4Init () {
 #  export PS4=" -[${CYAN}"'${LINENO}'"${COLOR_RESET}]"'$( printf "=%.0s" $(seq $(( $(tput cols) - ${#LINENO} - 4 )) ))'"\n"
 #  export PS4="+ [ ${CYAN}"'${LINENO}'"${COLOR_RESET} ][${CYAN}"'$([[ ${FUNCNAME[0]:-""} ]] && echo ${FUNCNAME[0]} || echo "  main  " )'"${COLOR_RESET}]\011"
 #  export PS4="+ [ ${CYAN}"'${LINENO}'"${COLOR_RESET} ][${CYAN}"'${FUNCNAME[0]:-"  main  "}'"${COLOR_RESET}]\011"
   export PS4="+ [ ${CYAN}"'${LINENO}'"${COLOR_RESET} ][${CYAN}"'${FUNCNAME[@]:-"  main  "}'"${COLOR_RESET}]"
+  PS4org=$FALSE
 }
-# debugRestor
-debugRestor () {
+# ps4Restor
+ps4Restor () {
   export PS4=${PS4_BACKUP}
+  PS4org=$TRUE
 }
-# debugStatus
-debugGetStatus () {
+#ps4Switch
+ps4Switch() {
+  [[ $PS4org ]] && ps4Init || ps4Restor
+}
+# xtraceStatus
+xtraceGetStatus () {
   [[ ${SHELLOPTS} =~ xtrace ]] && echo $TRUE || echo $FALSE
 }
-# debugOn if DEBUG TRUE
-debugOn () {
+# xtraceOn if DEBUG TRUE
+xtraceOn () {
   set -o xtrace -o functrace -o errtrace
 }
-# debugOff
-debugOff () {
+# xtraceOff
+xtraceOff () {
   set +o xtrace +o functrace +o errtrace
 }
-# debugSwitch
-debugSwitch () {
-  [[ $SHELLOPTS =~ xtrace ]] && debugOff ||  debugOn
+# xtraceSwitch
+xtraceSwitch () {
+  [[ $SHELLOPTS =~ xtrace ]] && xtraceOff ||  xtraceOn
 }
-# debugActivate
-debugActivate () {
-  [[ $bashDEBUG ]] && debugOn
+# xtraceActivate
+xtraceActivate () {
+  [[ $bashDEBUG ]] && xtraceOn
 }
 
 # verboseOn
@@ -142,18 +154,22 @@ init () {
   progname=${0##*/}
   MODE_INTERACTIF=getRuningMode
   PS4_BACKUP="$PS4"
-  debugInit
-  debugActivate
-#  debugGetStatus
+  ps4Init
+  xtraceActivate
+#  xtraceGetStatus
   verboseActivate
 #  verboseGetStatus
 }
 # clean before quiting
 clean () {
   # reset env
-  verboseOff
-  debugOff
-  debugRestor
+  [[ -z getRuningMode ]] && {
+    verboseOff
+    xtraceOff
+    ps4Restor
+  } || {
+    :
+  }
 }
 
 # logger - Init
@@ -192,18 +208,18 @@ logCri()   { log "CRITICAL" "${@:-merci de fournir un message !}"; }
 # config files
 
 start () {
-#  iniTerminal
+
   init
 #  getRuningMode
   # cmd=("", "", "", "")
   # how the script is called
 
   logInit
-  logCri FME
-  logErr FME
-  logWarn FME
-  logInfo FME
-  logDebug FME
+#  logCri FME
+#  logErr FME
+#  logWarn FME
+#  logInfo FME
+#  logDebug FME
   clean
 }
 
